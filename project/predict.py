@@ -18,7 +18,8 @@ import torchvision.transforms as transforms
 from PIL import Image
 from tqdm import tqdm
 
-from model import get_model, model_device
+from model import get_model, model_device, model_setenv
+
 
 if __name__ == "__main__":
     """Predict."""
@@ -34,6 +35,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--input", type=str, default="images/*.png", help="input image")
     args = parser.parse_args()
+
+    model_setenv()
 
     model = get_model(args.checkpoint)
     device = model_device()
@@ -55,4 +58,4 @@ if __name__ == "__main__":
         with torch.no_grad():
             output_tensor = model(input_tensor)
 
-        print("{:.4f} {}".format(output_tensor[0].item(), filename))
+        print("{:.4f} {}".format(output_tensor[0, 0].item(), filename))

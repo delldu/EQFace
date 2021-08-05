@@ -37,7 +37,7 @@ class EQFaceModel(nn.Module):
         x = 2.0 * (x - 0.5)
         fc = self.backbone(x)
 
-        return self.quality(fc)[0]
+        return self.quality(fc).clamp(0.0, 1.0)
 
 
 def model_load(model, path):
@@ -68,7 +68,6 @@ def model_save(model, path):
 def get_model(checkpoint):
     """Create model."""
 
-    model_setenv()
     model = EQFaceModel()
 
     if not os.path.exists(checkpoint):
@@ -77,9 +76,6 @@ def get_model(checkpoint):
         model_save(model, checkpoint)
     else:
         model_load(model, checkpoint)
-
-    device = model_device()
-    model.to(device)
 
     return model
 

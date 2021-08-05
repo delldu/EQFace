@@ -74,9 +74,6 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--export", help="export onnx model", action="store_true")
     parser.add_argument("-v", "--verify", help="verify onnx model", action="store_true")
     parser.add_argument(
-        "-p", "--predict", help="predict with onnx model", action="store_true"
-    )
-    parser.add_argument(
         "-o", "--output", type=str, default="output", help="output folder"
     )
 
@@ -93,15 +90,15 @@ if __name__ == "__main__":
     # ************************************************************************************/
     #
 
-    dummy_input = torch.randn(1, 1, 1, 512)
-    onnx_file_name = "{}/model.onnx".format(args.output)
+    dummy_input = torch.randn(1, 3, 112, 112)
+    checkpoint = "models/Face_Quality.pth"
+    onnx_file_name = "{}/face_quality.onnx".format(args.output)
 
     def export_onnx():
         """Export onnx model."""
 
         # 1. Create and load model.
-        torch_model = get_model()
-        torch_model = torch_model.cuda()
+        torch_model = get_model(checkpoint)
         torch_model.eval()
 
         # 2. Model export
@@ -109,7 +106,6 @@ if __name__ == "__main__":
 
         input_names = ["input"]
         output_names = ["output"]
-        # dynamic_axes = {'input': {0: "batch"},'output': {0: "batch"}}
 
         torch.onnx.export(
             torch_model,
@@ -124,18 +120,18 @@ if __name__ == "__main__":
         )
 
         # 3. Optimize model
-        # print('Checking model ...')
-        # onnx_model = onnx.load(onnx_file_name)
-        # onnx.checker.check_model(onnx_model)
+        print("Checking model ...")
+        onnx_model = onnx.load(onnx_file_name)
+        onnx.checker.check_model(onnx_model)
         # https://github.com/onnx/optimizer
 
         # 4. Visual model
-        # python -c "import netron; netron.start('output/model.onnx')"
+        # python -c "import netron; netron.start('output/face_quality.onnx')"
 
     def verify_onnx():
         """Verify onnx model."""
 
-        torch_model = get_model()
+        torch_model = get_model(checkpoint)
         torch_model.eval()
 
         onnxruntime_engine = onnx_load(onnx_file_name)
@@ -159,45 +155,10 @@ if __name__ == "__main__":
             to_numpy(torch_output), onnxruntime_outputs[0], rtol=1e-03, atol=1e-03
         )
         print(
-            "Onnx model {} has been tested with ONNXRuntime, result sounds good !".format(
+            "Onnx model {} tested with ONNXRuntime, result sounds good !".format(
                 onnx_file_name
             )
         )
-
-    def onnx_predict():
-        print("Onnx predicting ...")
-
-        #
-        # /************************************************************************************
-        # ***
-        # ***    MS: Define Input/Output File
-        # ***
-        # ************************************************************************************/
-        #
-
-        input_image_file = "lena.png"
-        output_image_file = "{}/{}".format(args.output, input_image_file)
-
-        # /************************************************************************************
-        # ***
-        # ***    MS: Normal Predict Flow
-        # ***
-        # ************************************************************************************/
-        image = Image.open(input_image_file).convert("RGB")
-        onnx_model = onnx_load(onnx_file_name)
-
-        start_time = time.time()
-        totensor = transforms.ToTensor()
-        toimage = transforms.ToPILImage()
-
-        input_image_tensor = totensor(input_image).unsqueeze(0)
-        output_image_tensor = onnx_forward(onnx_model, input_image_tensor)
-        output_image = toimage(output_image_tensor.squeeze(0))
-
-        spend_time = time.time() - start_time
-        print("Spend time: {:.2f} seconds".format(spend_time))
-
-        output_image.save(output_image_file)
 
     #
     # /************************************************************************************
@@ -212,6 +173,3 @@ if __name__ == "__main__":
 
     if args.verify:
         verify_onnx()
-
-    if args.predict:
-        onnx_predict()
